@@ -1,47 +1,25 @@
-# -*- coding: utf-8 -*-
-
-
-'''
-Has the filter that allows to filter by a date range.
-
-'''
+# coding=utf-8
+from __future__ import unicode_literals
 import copy
 import datetime
 import django
 from django import forms
 from django.contrib import admin
 from django.db import models
-from django.utils.translation import ugettext as _
-from django.contrib.admin.templatetags.admin_static import static
-from django.conf import settings
 
-use_suit = 'DATE_RANGE_FILTER_USE_WIDGET_SUIT'
-
-if hasattr(settings, use_suit):
-    DATE_RANGE_FILTER_USE_WIDGET_SUIT = getattr(settings, use_suit)
-else:
-    DATE_RANGE_FILTER_USE_WIDGET_SUIT = False
-
-if DATE_RANGE_FILTER_USE_WIDGET_SUIT:
-    try:
-        from suit.widgets import SuitDateWidget as AdminDateWidget, SuitSplitDateTimeWidget as AdminSplitDateTime
-    except ImportError:
-        from django.contrib.admin.widgets import AdminDateWidget, AdminSplitDateTime
-else:
-    from django.contrib.admin.widgets import AdminDateWidget, AdminSplitDateTime
+from wagtail.wagtailadmin.widgets import AdminDateInput as AdminDateWidget, AdminDateTimeInput as AdminSplitDateTime
 
 try:
     from django.utils.html import format_html
 except ImportError:
     from django.utils.html import conditional_escape, mark_safe
 
+
     def format_html(format_string, *args, **kwargs):
         args_safe = map(conditional_escape, args)
         kwargs_safe = dict((k, conditional_escape(v)) for (k, v) in kwargs.items())
         return mark_safe(format_string.format(*args_safe, **kwargs_safe))
 
-
-# Django doesn't deal well with filter params that look like queryset lookups.
 FILTER_PREFIX = 'drf__'
 
 
@@ -62,42 +40,25 @@ class DateRangeFilterBaseForm(forms.Form):
         super(DateRangeFilterBaseForm, self).__init__(*args, **kwargs)
         self.request = request
 
-    @property
-    def media(self):
-        try:
-            if getattr(self.request, 'daterange_filter_media_included'):
-                return forms.Media()
-        except AttributeError:
-            setattr(self.request, 'daterange_filter_media_included', True)
-
-            js = ["calendar.js", "admin/DateTimeShortcuts.js"]
-            css = ['widgets.css']
-
-            return forms.Media(
-                js=[static("admin/js/%s" % path) for path in js],
-                css={'all': [static("admin/css/%s" % path) for path in css]}
-            )
-
 
 class DateRangeForm(DateRangeFilterBaseForm):
-
     def __init__(self, *args, **kwargs):
         field_name = kwargs.pop('field_name')
         super(DateRangeForm, self).__init__(*args, **kwargs)
 
         self.fields['%s%s__gte' % (FILTER_PREFIX, field_name)] = forms.DateField(
-            label='',
+            label='从',
             widget=AdminDateWidget(
-                attrs={'placeholder': _('From date')}
+                attrs={'placeholder': '日期'}
             ),
             localize=True,
             required=False
         )
 
         self.fields['%s%s__lte' % (FILTER_PREFIX, field_name)] = forms.DateField(
-            label='',
+            label='到',
             widget=AdminDateWidget(
-                attrs={'placeholder': _('To date')}
+                attrs={'placeholder': '日期'}
             ),
             localize=True,
             required=False,
@@ -111,24 +72,23 @@ class DateRangeForm(DateRangeFilterBaseForm):
 
 
 class DateTimeRangeForm(DateRangeFilterBaseForm):
-
     def __init__(self, *args, **kwargs):
         field_name = kwargs.pop('field_name')
         super(DateTimeRangeForm, self).__init__(*args, **kwargs)
 
         self.fields['%s%s__gte' % (FILTER_PREFIX, field_name)] = forms.DateTimeField(
-            label='',
+            label='从',
             widget=DateRangeFilterAdminSplitDateTime(
-                attrs={'placeholder': _('From date')}
+                attrs={'placeholder': '日期'}
             ),
             localize=True,
             required=False
         )
 
         self.fields['%s%s__lte' % (FILTER_PREFIX, field_name)] = forms.DateTimeField(
-            label='',
+            label='到',
             widget=DateRangeFilterAdminSplitDateTime(
-                attrs={'placeholder': _('To date')},
+                attrs={'placeholder': '日期'},
             ),
             localize=True,
             required=False
@@ -156,13 +116,13 @@ class DateRangeFilter(admin.filters.FieldListFilter):
         Pop the original parameters, and return the date filter & other filter
         parameters.
         """
-        
+
         hidden_params = copy.deepcopy(cl.params)
         hidden_params.pop(self.lookup_kwarg_since, None)
         hidden_params.pop(self.lookup_kwarg_upto, None)
         return ({
-            'get_query': hidden_params,
-        }, )
+                    'get_query': hidden_params,
+                },)
 
     def expected_parameters(self):
         return [self.lookup_kwarg_since, self.lookup_kwarg_upto]
@@ -204,7 +164,8 @@ class DateTimeRangeFilter(admin.filters.FieldListFilter):
         return []
 
     def expected_parameters(self):
-        return [self.lookup_kwarg_since_0, self.lookup_kwarg_since_1, self.lookup_kwarg_upto_0, self.lookup_kwarg_upto_1]
+        return [self.lookup_kwarg_since_0, self.lookup_kwarg_since_1, self.lookup_kwarg_upto_0,
+                self.lookup_kwarg_upto_1]
 
     def get_form(self, request):
         return DateTimeRangeForm(request, data=self.used_parameters, field_name=self.field_path)

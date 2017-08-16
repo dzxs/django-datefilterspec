@@ -4,3 +4,5 @@ dist/
 .coverage
 .tox/
 htmlcov/
+.idea/
+build/
